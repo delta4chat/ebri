@@ -1,7 +1,7 @@
 use super::ref_counted::RefCounted;
 use super::{Collectible, Guard, Ptr};
 
-use core::mem::forget;
+use core::mem::{forget, transmute};
 use core::ops::Deref;
 use core::ptr::{addr_of, NonNull};
 use core::sync::atomic::Ordering::Relaxed;
@@ -26,7 +26,7 @@ impl<T: 'static> Shared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::Shared;
+    /// use ebri::Shared;
     ///
     /// let shared: Shared<usize> = Shared::new(31);
     /// ```
@@ -45,14 +45,14 @@ impl<T> Shared<T> {
     /// # Safety
     ///
     /// `T::drop` can be run after the last strong reference is dropped, therefore it is safe only
-    /// if `T::drop` does not access short-lived data or [`std::mem::needs_drop`] is `false` for
+    /// if `T::drop` does not access short-lived data or [`core::mem::needs_drop`] is `false` for
     /// `T`. Otherwise, the instance must be manually dropped by invoking [`Self::drop_in_place`]
     /// before the lifetime of `T` is reached.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::Shared;
+    /// use ebri::Shared;
     ///
     /// let hello = String::from("hello");
     /// let shared: Shared<&str> = unsafe { Shared::new_unchecked(hello.as_str()) };
@@ -72,7 +72,7 @@ impl<T> Shared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{Guard, Shared};
+    /// use ebri::{Guard, Shared};
     ///
     /// let shared: Shared<usize> = Shared::new(37);
     /// let guard = Guard::new();
@@ -92,7 +92,7 @@ impl<T> Shared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{Guard, Shared};
+    /// use ebri::{Guard, Shared};
     ///
     /// let shared: Shared<usize> = Shared::new(37);
     /// let guard = Guard::new();
@@ -104,7 +104,7 @@ impl<T> Shared<T> {
     #[inline]
     #[must_use]
     pub fn get_guarded_ref<'g>(&self, _guard: &'g Guard) -> &'g T {
-        unsafe { std::mem::transmute(&**self.underlying()) }
+        unsafe { transmute(&**self.underlying()) }
     }
 
     /// Returns a mutable reference to the instance if the [`Shared`] is holding the only strong
@@ -118,7 +118,7 @@ impl<T> Shared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::Shared;
+    /// use ebri::Shared;
     ///
     /// let mut shared: Shared<usize> = Shared::new(38);
     /// unsafe {
@@ -136,9 +136,9 @@ impl<T> Shared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::Shared;
-    /// use std::sync::atomic::AtomicBool;
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::Shared;
+    /// use core::sync::atomic::AtomicBool;
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// let shared: Shared<usize> = Shared::new(10);
     /// let shared_clone: Shared<usize> = shared.clone();
@@ -159,7 +159,7 @@ impl<T> Shared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{Guard, Shared};
+    /// use ebri::{Guard, Shared};
     ///
     /// let shared: Shared<usize> = Shared::new(47);
     /// let shared_clone = shared.clone();
@@ -191,9 +191,9 @@ impl<T> Shared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::Shared;
-    /// use std::sync::atomic::AtomicBool;
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::Shared;
+    /// use core::sync::atomic::AtomicBool;
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// static DROPPED: AtomicBool = AtomicBool::new(false);
     /// struct T(&'static AtomicBool);
@@ -236,11 +236,7 @@ impl<T> Shared<T> {
     #[inline]
     pub(super) fn from(ptr: NonNull<RefCounted<T>>) -> Self {
         debug_assert_ne!(
-            unsafe {
-                ptr.as_ref()
-                    .ref_cnt()
-                    .load(std::sync::atomic::Ordering::Relaxed)
-            },
+            unsafe { ptr.as_ref().ref_cnt().load(Relaxed) },
             0
         );
         Self { instance_ptr: ptr }
@@ -255,7 +251,7 @@ impl<T> Shared<T> {
     #[inline]
     fn pass_underlying_to_collector(&mut self, guard: &Guard) {
         let dyn_ref = self.underlying().as_collectible();
-        let dyn_mut_ptr: *mut dyn Collectible = unsafe { std::mem::transmute(dyn_ref) };
+        let dyn_mut_ptr: *mut dyn Collectible = unsafe { transmute(dyn_ref) };
         guard.collect(dyn_mut_ptr);
     }
 }
@@ -313,5 +309,5 @@ impl<'g, T> TryFrom<Ptr<'g, T>> for Shared<T> {
 unsafe impl<T: Send> Send for Shared<T> {}
 unsafe impl<T: Sync> Sync for Shared<T> {}
 
-unwindsafe_impl!(Shared);
+unwindsafe_impl!(Shared, 1);
 

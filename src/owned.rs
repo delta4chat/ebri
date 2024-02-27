@@ -1,9 +1,9 @@
 use super::ref_counted::RefCounted;
 use super::{Collectible, Guard, Ptr};
 
-use core::mem::forget;
+use core::mem::{forget, transmute};
 use core::ops::Deref;
-use std::panic::UnwindSafe;
+use core::sync::atomic::Ordering::Relaxed;
 use core::ptr::{addr_of, NonNull};
 
 /// [`Owned`] uniquely owns an instance.
@@ -26,7 +26,7 @@ impl<T: 'static> Owned<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::Owned;
+    /// use ebri::Owned;
     ///
     /// let owned: Owned<usize> = Owned::new(31);
     /// ```
@@ -45,12 +45,12 @@ impl<T> Owned<T> {
     /// # Safety
     ///
     /// `T::drop` can be run after the [`Owned`] is dropped, therefore it is safe only if `T::drop`
-    /// does not access short-lived data or [`std::mem::needs_drop`] is `false` for `T`.
+    /// does not access short-lived data or [`core::mem::needs_drop`] is `false` for `T`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::Owned;
+    /// use ebri::Owned;
     ///
     /// let hello = String::from("hello");
     /// let owned: Owned<&str> = unsafe { Owned::new_unchecked(hello.as_str()) };
@@ -68,7 +68,7 @@ impl<T> Owned<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{Guard, Owned};
+    /// use ebri::{Guard, Owned};
     ///
     /// let owned: Owned<usize> = Owned::new(37);
     /// let guard = Guard::new();
@@ -88,7 +88,7 @@ impl<T> Owned<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{Guard, Owned};
+    /// use ebri::{Guard, Owned};
     ///
     /// let owned: Owned<usize> = Owned::new(37);
     /// let guard = Guard::new();
@@ -100,7 +100,7 @@ impl<T> Owned<T> {
     #[inline]
     #[must_use]
     pub fn get_guarded_ref<'g>(&self, _guard: &'g Guard) -> &'g T {
-        unsafe { std::mem::transmute(&**self.underlying()) }
+        unsafe { transmute(&**self.underlying()) }
     }
 
     /// Returns a mutable reference to the instance.
@@ -112,7 +112,7 @@ impl<T> Owned<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::Owned;
+    /// use ebri::Owned;
     ///
     /// let mut owned: Owned<usize> = Owned::new(38);
     /// unsafe {
@@ -130,9 +130,9 @@ impl<T> Owned<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::Owned;
-    /// use std::sync::atomic::AtomicBool;
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::Owned;
+    /// use core::sync::atomic::AtomicBool;
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// let owned: Owned<usize> = Owned::new(10);
     ///
@@ -149,7 +149,7 @@ impl<T> Owned<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{Guard, Owned};
+    /// use ebri::{Guard, Owned};
     ///
     /// let owned: Owned<usize> = Owned::new(47);
     /// let guard = Guard::new();
@@ -170,9 +170,9 @@ impl<T> Owned<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::Owned;
-    /// use std::sync::atomic::AtomicBool;
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::Owned;
+    /// use core::sync::atomic::AtomicBool;
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// static DROPPED: AtomicBool = AtomicBool::new(false);
     /// struct T(&'static AtomicBool);
@@ -207,11 +207,7 @@ impl<T> Owned<T> {
     #[inline]
     pub(super) fn from(ptr: NonNull<RefCounted<T>>) -> Self {
         debug_assert_eq!(
-            unsafe {
-                ptr.as_ref()
-                    .ref_cnt()
-                    .load(std::sync::atomic::Ordering::Relaxed)
-            },
+            unsafe { ptr.as_ref().ref_cnt().load(Relaxed) },
             0
         );
         Self { instance_ptr: ptr }
@@ -226,7 +222,7 @@ impl<T> Owned<T> {
     #[inline]
     fn pass_underlying_to_collector(&mut self, guard: &Guard) {
         let dyn_ref = self.underlying().as_collectible();
-        let dyn_mut_ptr: *mut dyn Collectible = unsafe { std::mem::transmute(dyn_ref) };
+        let dyn_mut_ptr: *mut dyn Collectible = unsafe { transmute(dyn_ref) };
         guard.collect(dyn_mut_ptr);
     }
 }
@@ -258,5 +254,5 @@ impl<T> Drop for Owned<T> {
 unsafe impl<T: Send> Send for Owned<T> {}
 unsafe impl<T: Sync> Sync for Owned<T> {}
 
-unwindsafe_impl!(Owned);
+unwindsafe_impl!(Owned, 1);
 

@@ -1,4 +1,4 @@
-use std::ptr::NonNull;
+use core::ptr::NonNull;
 
 /// [`Collectible`] defines key methods for `Self` to be reclaimed by the EBR garbage collector.
 ///
@@ -10,8 +10,8 @@ use std::ptr::NonNull;
 /// # Examples
 ///
 /// ```
-/// use scc::ebr::{Guard, Collectible};
-/// use std::ptr::NonNull;
+/// use ebri::{Guard, Collectible};
+/// use core::ptr::NonNull;
 ///
 /// struct LazyString(String, Option<NonNull<dyn Collectible>>);
 ///
@@ -23,7 +23,7 @@ use std::ptr::NonNull;
 ///
 /// let boxed: Box<LazyString> = Box::new(LazyString(String::from("Lazy"), None));
 ///
-/// let static_ref: &'static LazyString = unsafe { std::mem::transmute(&*boxed) };
+/// let static_ref: &'static LazyString = unsafe { core::mem::transmute(&*boxed) };
 /// let guard_for_ref = Guard::new();
 ///
 /// let guard_to_drop = Guard::new();

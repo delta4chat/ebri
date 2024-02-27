@@ -1,8 +1,8 @@
 use super::{Collectible, Guard, Tag};
 use crate::exit_guard::ExitGuard;
-use std::ptr::{self, NonNull};
-use std::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
-use std::sync::atomic::{fence, AtomicPtr, AtomicU8};
+use core::ptr::{self, NonNull};
+use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
+use core::sync::atomic::{fence, AtomicPtr, AtomicU8};
 
 /// [`Collector`] is a garbage collector that reclaims thread-locally unreachable instances
 /// when they are globally unreachable.
@@ -167,13 +167,13 @@ impl Collector {
                     garbage_link = unsafe { *instance_ptr.as_mut().next_ptr_mut() };
 
                     // Previous `drop_and_dealloc` may have accessed `self.current_instance_link`.
-                    std::sync::atomic::compiler_fence(Acquire);
+                    core::sync::atomic::compiler_fence(Acquire);
                     self.reclaim(instance_ptr.as_ptr());
                 }
             });
 
             // `drop_and_dealloc` may access `self.current_instance_link`.
-            std::sync::atomic::compiler_fence(Acquire);
+            core::sync::atomic::compiler_fence(Acquire);
             unsafe {
                 instance_ptr.as_mut().drop_and_dealloc();
             }

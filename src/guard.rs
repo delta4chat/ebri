@@ -1,6 +1,6 @@
 use super::collectible::{Collectible, DeferredClosure};
 use super::collector::Collector;
-use std::panic::UnwindSafe;
+
 
 /// [`Guard`] allows the user to read [`AtomicShared`](super::AtomicShared) and keeps the
 /// underlying instance pinned to the thread.
@@ -23,7 +23,7 @@ impl Guard {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::Guard;
+    /// use ebri::Guard;
     ///
     /// let guard = Guard::new();
     /// ```
@@ -47,8 +47,8 @@ impl Guard {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{Guard, Collectible};
-    /// use std::ptr::NonNull;
+    /// use ebri::{Guard, Collectible};
+    /// use core::ptr::NonNull;
     ///
     /// struct C(usize, Option<NonNull<dyn Collectible>>);
     ///
@@ -60,7 +60,7 @@ impl Guard {
     ///
     /// let boxed: Box<C> = Box::new(C(7, None));
     ///
-    /// let static_ref: &'static C = unsafe { std::mem::transmute(&*boxed) };
+    /// let static_ref: &'static C = unsafe { core::mem::transmute(&*boxed) };
     ///
     /// let guard = Guard::new();
     /// guard.defer(boxed);
@@ -84,7 +84,7 @@ impl Guard {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::Guard;
+    /// use ebri::Guard;
     ///
     /// let guard = Guard::new();
     /// guard.defer_execute(|| println!("deferred"));
@@ -129,4 +129,5 @@ impl Drop for Guard {
     }
 }
 
-impl UnwindSafe for Guard {}
+crate::uwindsafe_impl!(Guard, 0);
+

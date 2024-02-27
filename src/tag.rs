@@ -1,4 +1,4 @@
-use std::cmp::PartialEq;
+use core::cmp::PartialEq;
 
 /// [`Tag`] is a four-state `Enum` that can be embedded in a pointer as the two least
 /// significant bits of the pointer value.

@@ -8,15 +8,38 @@
 
 #[macro_export]
 macro_rules! unwindsafe_impl {
-    ($t:tt) => {{
+    // no generic types
+    ($t:tt, 0) => {{
         #[cfg(feature = "std")]
         mod _unwindsafe_impl {
             use super::$t;
             use std::panic::UnwindSafe;
 
+            impl UnwindSafe for $t {}
+        }
+    }};
+
+    // one generic type without lifetime (owned)
+    ($t:tt, 1) => {{
+        #[cfg(feature = "std")]
+        mod _unwindsafe_generic_impl {
+            use super::$t;
+            use std::panic::UnwindSafe;
+
+            impl<T: UnwindSafe> UnwindSafe for $t<T> {}
+        }
+    }};
+
+    // one generic type with lifetime (borrowed)
+    ($t:tt, 2) => {{
+        #[cfg(feature = "std")]
+        mod _unwindsafe_generic_lifetime_impl {
+            use super::$t;
+            use std::panic::UnwindSafe;
+
             impl<'g, T: UnwindSafe> UnwindSafe for $t<'g, T> {}
         }
-    }}
+    }};
 }
 
 mod atomic_owned;
@@ -54,7 +77,7 @@ mod ref_counted;
 /// # Examples
 ///
 /// ```
-/// use scc::ebr::{suspend, Guard, Shared};
+/// use ebri::{suspend, Guard, Shared};
 ///
 /// assert!(suspend());
 ///

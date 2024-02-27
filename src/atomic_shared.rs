@@ -1,10 +1,10 @@
 use super::ref_counted::RefCounted;
 use super::{Guard, Ptr, Shared, Tag};
-use std::mem::forget;
-use std::panic::UnwindSafe;
-use std::ptr::{null_mut, NonNull};
-use std::sync::atomic::AtomicPtr;
-use std::sync::atomic::Ordering::{self, Acquire, Relaxed};
+use core::mem::forget;
+
+use core::ptr::{null_mut, NonNull};
+use core::sync::atomic::AtomicPtr;
+use core::sync::atomic::Ordering::{self, Acquire, Relaxed};
 
 /// [`AtomicShared`] owns the underlying instance, and allows users to perform atomic operations
 /// on the pointer to it.
@@ -28,7 +28,7 @@ impl<T: 'static> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::AtomicShared;
+    /// use ebri::AtomicShared;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::new(10);
     /// ```
@@ -47,7 +47,7 @@ impl<T> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{AtomicShared, Shared};
+    /// use ebri::{AtomicShared, Shared};
     ///
     /// let shared: Shared<usize> = Shared::new(10);
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::from(shared);
@@ -67,7 +67,7 @@ impl<T> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::AtomicShared;
+    /// use ebri::AtomicShared;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::null();
     /// ```
@@ -84,8 +84,8 @@ impl<T> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{AtomicShared, Tag};
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::{AtomicShared, Tag};
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::null();
     /// atomic_shared.update_tag_if(Tag::Both, |p| p.tag() == Tag::None, Relaxed, Relaxed);
@@ -101,8 +101,8 @@ impl<T> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{AtomicShared, Guard};
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::{AtomicShared, Guard};
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::new(11);
     /// let guard = Guard::new();
@@ -119,8 +119,8 @@ impl<T> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{AtomicShared, Guard, Shared, Tag};
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::{AtomicShared, Guard, Shared, Tag};
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::new(14);
     /// let guard = Guard::new();
@@ -155,8 +155,8 @@ impl<T> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{AtomicShared, Tag};
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::{AtomicShared, Tag};
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::null();
     /// assert_eq!(atomic_shared.tag(Relaxed), Tag::None);
@@ -173,8 +173,8 @@ impl<T> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{AtomicShared, Tag};
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::{AtomicShared, Tag};
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::null();
     /// assert!(atomic_shared.update_tag_if(Tag::Both, |p| p.tag() == Tag::None, Relaxed, Relaxed));
@@ -210,8 +210,8 @@ impl<T> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{AtomicShared, Guard, Shared, Tag};
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::{AtomicShared, Guard, Shared, Tag};
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::new(17);
     /// let guard = Guard::new();
@@ -281,8 +281,8 @@ impl<T> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{AtomicShared, Guard, Shared, Tag};
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::{AtomicShared, Guard, Shared, Tag};
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::new(17);
     /// let guard = Guard::new();
@@ -341,8 +341,8 @@ impl<T> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{AtomicShared, Guard};
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::{AtomicShared, Guard};
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::new(59);
     /// let guard = Guard::new();
@@ -378,8 +378,8 @@ impl<T> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{AtomicShared, Guard, Shared};
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::{AtomicShared, Guard, Shared};
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::new(47);
     /// let guard = Guard::new();
@@ -409,8 +409,8 @@ impl<T> AtomicShared<T> {
     /// # Examples
     ///
     /// ```
-    /// use scc::ebr::{AtomicShared, Shared};
-    /// use std::sync::atomic::Ordering::Relaxed;
+    /// use ebri::{AtomicShared, Shared};
+    /// use core::sync::atomic::Ordering::Relaxed;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::new(55);
     /// let shared: Shared<usize> = atomic_shared.into_shared(Relaxed).unwrap();
@@ -451,7 +451,7 @@ impl<T> Drop for AtomicShared<T> {
 }
 
 unsafe impl<T: Send> Send for AtomicShared<T> {}
-
 unsafe impl<T: Sync> Sync for AtomicShared<T> {}
 
-impl<T: UnwindSafe> UnwindSafe for AtomicShared<T> {}
+crate::unwindsafe_impl!(AtomicShared, 1);
+

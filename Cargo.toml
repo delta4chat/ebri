@@ -5,7 +5,7 @@ license = "GPL-3.0"
 description = "[NOTE: un-tested. use at your own risk.] ebri (ebr-integrated), that is, a `no-std` EBR (Epoch-Based Reclamation) implementation. thanks to the idea from `scc::ebr`."
 documentation = "https://docs.rs/ebri"
 
-version = "0.0.2"
+version = "0.0.3"
 authors = ["wvwwvwwv <wvwwvwwv@me.com>", "Delta4 <delta4chat@gmx.com>"]
 
 edition = "2021"

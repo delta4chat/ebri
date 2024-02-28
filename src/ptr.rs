@@ -256,5 +256,6 @@ impl<'g, T> PartialEq for Ptr<'g, T> {
     }
 }
 
-crate::unwindsafe_impl!(Ptr, T, 'g);
+use core::panic::UnwindSafe;
+impl<'g, T: UnwindSafe> UnwindSafe for Ptr<'g, T> {}
 

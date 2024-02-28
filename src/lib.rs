@@ -11,42 +11,6 @@
 // #![no_std] by default (unless feature "std" enabled)
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[macro_export]
-macro_rules! unwindsafe_impl {
-    // no generic types
-    ($t:tt) => {
-        #[cfg(feature = "std")]
-        mod _unwindsafe_impl {
-            use super::$t;
-            use std::panic::UnwindSafe;
-
-            impl UnwindSafe for $t {}
-        }
-    };
-
-    // one generic type without lifetime (owned)
-    ($t:tt, $gt:tt) => {
-        #[cfg(feature = "std")]
-        mod _unwindsafe_generic_impl {
-            use super::$t;
-            use std::panic::UnwindSafe;
-
-            impl<$gt: UnwindSafe> UnwindSafe for $t<$gt> {}
-        }
-    };
-
-    // one generic type with lifetime (borrowed)
-    ($t:tt, $gt:tt, $lt:tt) => {
-        #[cfg(feature = "std")]
-        mod _unwindsafe_generic_lifetime_impl {
-            use super::$t;
-            use std::panic::UnwindSafe;
-
-            impl<$lt, $gt: UnwindSafe> UnwindSafe for $t<$lt, $gt> {}
-        }
-    };
-}
-
 mod atomic_owned;
 pub use atomic_owned::AtomicOwned;
 
@@ -71,9 +35,9 @@ pub use shared::Shared;
 mod tag;
 pub use tag::Tag;
 
-mod collector;
-mod ref_counted;
-mod exit_guard;
+pub mod collector;
+pub mod ref_counted;
+pub mod exit_guard;
 
 /// Suspends the garbage collector of the current thread.
 ///
@@ -105,3 +69,4 @@ mod exit_guard;
 pub fn suspend() -> bool {
     collector::Collector::pass_garbage()
 }
+

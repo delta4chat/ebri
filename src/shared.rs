@@ -312,5 +312,6 @@ impl<'g, T> TryFrom<Ptr<'g, T>> for Shared<T> {
 unsafe impl<T: Send> Send for Shared<T> {}
 unsafe impl<T: Sync> Sync for Shared<T> {}
 
-unwindsafe_impl!(Shared, T);
+use core::panic::UnwindSafe;
+impl<T: UnwindSafe> UnwindSafe for Shared<T> {}
 

@@ -257,5 +257,6 @@ impl<T> Drop for Owned<T> {
 unsafe impl<T: Send> Send for Owned<T> {}
 unsafe impl<T: Sync> Sync for Owned<T> {}
 
-unwindsafe_impl!(Owned, T);
+use core::panic::UnwindSafe;
+impl<T: UnwindSafe> UnwindSafe for Owned<T> {}
 

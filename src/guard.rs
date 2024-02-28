@@ -131,5 +131,6 @@ impl Drop for Guard {
     }
 }
 
-crate::unwindsafe_impl!(Guard);
+use core::panic::UnwindSafe;
+impl UnwindSafe for Guard {}
 

@@ -13,7 +13,7 @@ rust-version = "1.65.0"
 
 #readme = "README.md"
 
-keywords = ["ebr", "lock-free", "rcu", "atomic", "garbage"]
+keywords = ["no-std", "embedded", "integrated", "lock-free", "rcu", "atomic", "garbage", "gc"]
 categories = ["ebr", "concurrency", "memory-management", "no-std"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -28,5 +28,5 @@ std = []
 anyhow = { version = "1.0.80", default-features = false }
 log = { version = "0.4.20", default-features = false }
 mcslock = { version = "0.1.1", default-features = false, features = ["lock_api"] }
-once_cell = { version = "1.19.0", default-features = false, features = ["portable-atomic", "race"] }
+#once_cell = { version = "1.19.0", default-features = false, features = ["portable-atomic", "race"] }
 

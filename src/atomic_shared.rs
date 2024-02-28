@@ -456,5 +456,6 @@ impl<T> Drop for AtomicShared<T> {
 unsafe impl<T: Send> Send for AtomicShared<T> {}
 unsafe impl<T: Sync> Sync for AtomicShared<T> {}
 
-crate::unwindsafe_impl!(AtomicShared, T);
+use core::panic::UnwindSafe;
+impl<T: UnwindSafe> UnwindSafe for AtomicShared<T> {}
 

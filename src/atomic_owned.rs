@@ -378,5 +378,6 @@ impl<T> Drop for AtomicOwned<T> {
 unsafe impl<T: Send> Send for AtomicOwned<T> {}
 unsafe impl<T: Sync> Sync for AtomicOwned<T> {}
 
-unwindsafe_impl!(AtomicOwned, T);
+use core::panic::UnwindSafe;
+impl<T: UnwindSafe> UnwindSafe for AtomicOwned<T> {}
 

@@ -8,6 +8,9 @@ use core::sync::atomic::{
     Ordering::{self, Relaxed},
 };
 
+extern crate alloc;
+use alloc::boxed::Box;
+
 /// [`AtomicOwned`] owns the underlying instance, and allows users to perform atomic operations
 /// on the pointer to it.
 #[derive(Debug)]
@@ -375,5 +378,5 @@ impl<T> Drop for AtomicOwned<T> {
 unsafe impl<T: Send> Send for AtomicOwned<T> {}
 unsafe impl<T: Sync> Sync for AtomicOwned<T> {}
 
-unwindsafe_impl!(AtomicOwned, 1);
+unwindsafe_impl!(AtomicOwned, T);
 

@@ -6,6 +6,9 @@ use core::ops::Deref;
 use core::sync::atomic::Ordering::Relaxed;
 use core::ptr::{addr_of, NonNull};
 
+extern crate alloc;
+use alloc::boxed::Box;
+
 /// [`Owned`] uniquely owns an instance.
 ///
 /// The instance it passed to the `EBR` garbage collector when the [`Owned`] is dropped.
@@ -254,5 +257,5 @@ impl<T> Drop for Owned<T> {
 unsafe impl<T: Send> Send for Owned<T> {}
 unsafe impl<T: Sync> Sync for Owned<T> {}
 
-unwindsafe_impl!(Owned, 1);
+unwindsafe_impl!(Owned, T);
 

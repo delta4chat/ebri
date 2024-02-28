@@ -1,9 +1,8 @@
-workspace = { members = ["src/ebri"] }
 [package]
 name = "ebri"
 repository = "https://github.com/delta4chat/ebri"
 license = "GPL-3.0"
-description = "ebri (ebr-integrated), that is, a `no-std` EBR (Epoch-Based Reclamation) implementation. thanks to the idea from `scc::ebr`."
+description = "[NOTE: un-tested. use at your own risk.] ebri (ebr-integrated), that is, a `no-std` EBR (Epoch-Based Reclamation) implementation. thanks to the idea from `scc::ebr`."
 documentation = "https://docs.rs/ebri"
 
 version = "0.0.1"
@@ -24,4 +23,10 @@ categories = ["ebr", "concurrency", "memory-management", "no-std"]
 [features]
 default = []
 std = []
+
+[dependencies]
+anyhow = { version = "1.0.80", default-features = false }
+log = { version = "0.4.20", default-features = false }
+mcslock = { version = "0.1.1", default-features = false, features = ["lock_api"] }
+once_cell = { version = "1.19.0", default-features = false, features = ["portable-atomic", "race"] }
 

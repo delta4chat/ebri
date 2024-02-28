@@ -1,5 +1,8 @@
 use core::ptr::NonNull;
 
+extern crate alloc;
+use alloc::boxed::Box;
+
 /// [`Collectible`] defines key methods for `Self` to be reclaimed by the EBR garbage collector.
 ///
 /// The [`ebr`](super) module provides managed handles which implement [`Collectible`] in tandem

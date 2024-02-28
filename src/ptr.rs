@@ -256,5 +256,5 @@ impl<'g, T> PartialEq for Ptr<'g, T> {
     }
 }
 
-crate::unwindsafe_impl!(Ptr, 2);
+crate::unwindsafe_impl!(Ptr, T, 'g);
 

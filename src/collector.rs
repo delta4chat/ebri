@@ -1,8 +1,13 @@
 use super::{Collectible, Guard, Tag};
 use crate::exit_guard::ExitGuard;
+
 use core::ptr::{self, NonNull};
-use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
-use core::sync::atomic::{fence, AtomicPtr, AtomicU8};
+use core::sync::atomic::Ordering::{self, Acquire, Relaxed, Release, SeqCst};
+use core::sync::atomic::{fence, AtomicPtr, AtomicBool, AtomicU8, AtomicUsize};
+
+extern crate alloc;
+use alloc::sync::Arc;
+use alloc::boxed::Box;
 
 /// [`Collector`] is a garbage collector that reclaims thread-locally unreachable instances
 /// when they are globally unreachable.
@@ -123,10 +128,10 @@ impl Collector {
         LOCAL_COLLECTOR.with(|local_collector| {
             let mut collector_ptr = local_collector.load(Relaxed);
             if collector_ptr.is_null() {
-                collector_ptr = COLLECTOR_ANCHOR.with(CollectorAnchor::alloc);
+                collector_ptr = COLLECTOR_ANCHOR.with(|anchor| { CollectorAnchor::alloc(&anchor) });
                 local_collector.store(collector_ptr, Relaxed);
             }
-            collector_ptr
+            collector_ptr as *mut _
         })
     }
 
@@ -384,6 +389,198 @@ fn try_drop_local_collector() {
     }
 }
 
+use core::mem::MaybeUninit;
+use mcslock::raw::spins;
+
+struct PseudoThreadLocal<T> {
+    id:        AtomicUsize,
+
+    factory:   Option<fn() -> T>,
+    init_spin: AtomicBool,
+
+    mu_inner:  MaybeUninit<Arc<T>>,
+    accs_spin: spins::Mutex<()>,
+}
+impl<T> PseudoThreadLocal<T> {
+    const PTL_ID_COUNTER_ORDERING: Ordering = Ordering::Relaxed;
+
+    const PTL_INIT_ID_ORDERING:    Ordering = Ordering::Relaxed;
+    const PTL_INIT_SPIN_ORDERING:  Ordering = Ordering::Acquire;
+
+    pub const fn new(factory: fn() -> T) -> Self {
+        let mut this = Self::uninit();
+        this.factory = Some(factory);
+        this
+    }
+
+    pub const fn uninit() -> Self {
+        Self {
+            id:        AtomicUsize::new(0),
+
+            factory:   None,
+            init_spin: AtomicBool::new(false),
+
+            mu_inner:  MaybeUninit::uninit(),
+            accs_spin: spins::Mutex::new(()),
+        }
+    }
+
+    pub fn try_init_default(&'static self) -> anyhow::Result<()> {
+        if let Some(f) = self.factory {
+            self.try_init(f())
+        } else {
+            anyhow::bail!("PseudoThreadLocal::try_init_default() called but without `self.factory` set.");
+        }
+    }
+
+    // NOTE: this function and it's inner implementation **must not panic**.
+    // if this fn panicked at call, it's will cause some memory errors of access-uninitialized-memory or undefined behavior.
+    /// thread-safe implementation for [Self::init_unchecked].
+    /// all calls to this method is protected by a spinning lock (that is not require `std` crate).
+    pub fn try_init(&self, inner: T) -> anyhow::Result<()> {
+        let arc_inner = Arc::new(inner);
+
+        // we doing a simple (limited) spinning lock. due to no_std, so there is no way to access system-side locks.
+        const MAX_ITER: usize = 65535;
+        for i in 1..=MAX_ITER {
+            if self.init_spin.load(Self::PTL_INIT_SPIN_ORDERING) {
+                anyhow::bail!("[E0] already initialized. (iteration={i})");
+            } else {
+                if let Ok(v) = Self::genid(arc_inner.clone(), false) {
+                    self.id.store(v, Self::PTL_INIT_ID_ORDERING);
+                } else {
+                    anyhow::bail!("[E1] Self::genid overflow in Self::init()! (iteration={i})");
+                }
+
+                if let Err(_) =
+                    self.init_spin.compare_exchange(
+                        false, // if prev value == false:
+                        true,  // then: set it   = true
+                        Self::PTL_INIT_SPIN_ORDERING,
+                        Self::PTL_INIT_SPIN_ORDERING,
+                    )
+                {
+                    log::warn!("[E3] PseudoThreadLocal: compare-exchange failed in Self::init() (iteration={i})");
+                    continue;
+                }
+            }
+
+            if self.init_spin.load(Self::PTL_INIT_SPIN_ORDERING) {
+                // initialing...
+                unsafe { self.init_unchecked(arc_inner); }
+
+                // initialized.
+                return Ok(());
+            } else {
+                anyhow::bail!("[E4] possible programming bug: spinning lock **UNLOCKED** after a success acquired! (iteration={i})");
+            }
+        }
+
+        anyhow::bail!("[E5] unable to acquire the spinning lock: maybe dead-lock happend? MAX_ITERATION={MAX_ITER}");
+    }
+
+    /// initial this PTL with value
+    ///
+    /// # BE CAREFULLY
+    /// this method is un-protected lock-free, it has not used any thread-lock for sync access.
+    /// the caller must guarantees each calls has a thread lock or any sync protection.
+    /// unless it causes memory errors such as double-initialing or undefined behavior.
+    pub unsafe fn init_unchecked(&self, arc_inner: Arc<T>) {
+        // first get a immutable pointer (*const T),
+        // then convert it to mutable ptr(*mut T).
+        // finally we write it for storing initial value.
+
+        let mu_ptr = self.mu_inner.as_ptr() as *mut _; 
+        
+        // ** Docs From Rust Core Library: **
+        //
+        // `core::ptr::write_unaligned` does not drop the contents of `dst`.
+        //
+        // This is safe, but it could leak allocations or resources,
+        // so care should be taken not to overwrite an object that should be dropped.
+        //
+        // Additionally, it does not drop `src`.
+        // Semantically, `src` is moved into the location pointed to by `dst`.
+        //
+        // This is appropriate for initializing uninitialized memory,
+        // or overwriting memory that has previously been read with.
+        //
+        core::ptr::write_unaligned(mu_ptr, arc_inner);
+
+        // initialized.
+    }
+
+    /// this static method should not panic.
+    pub fn genid(arc_inner: Arc<T>, saturating: bool) -> anyhow::Result<usize> {
+        static _PTL_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+        let count =
+            loop {
+                let prev = _PTL_ID_COUNTER.load(Self::PTL_ID_COUNTER_ORDERING);
+                if  prev == usize::MAX {
+                    if saturating {
+                        _PTL_ID_COUNTER.store(0, Self::PTL_ID_COUNTER_ORDERING);
+                    } else {
+                        anyhow::bail!("[1] PTL_ID_COUNTER reached usize::MAX!");
+                    }
+                }
+
+                _PTL_ID_COUNTER.fetch_add(1, Self::PTL_ID_COUNTER_ORDERING); // try increment
+                let now  = _PTL_ID_COUNTER.load(Self::PTL_ID_COUNTER_ORDERING);
+
+                if now < prev {
+                    if saturating {
+                        break now;
+                    }
+                    anyhow::bail!("[2] PTL_ID_COUNTER overflow AtomicUsize!");
+                }
+                if now == prev {
+                    continue;
+                }
+
+                // now > prev
+                break now;
+            };
+
+        let addr = (core::ptr::addr_of!(arc_inner) as usize)   + (Arc::as_ptr(&arc_inner) as usize);
+        let id   = addr + count + Arc::strong_count(&arc_inner) + Arc::weak_count(&arc_inner);
+        Ok(id)
+    }
+
+    pub unsafe fn get_unchecked(&'static self) -> Arc<T> {
+        self.mu_inner.assume_init_ref().clone()
+    }
+
+    pub fn with<CB, RET>(&'static self, callback: CB) -> RET
+    where
+        CB: FnOnce(Arc<T>) -> RET,
+    {
+        let val = {
+            let mut node = spins::MutexNode::new();
+            let _guard = self.accs_spin.lock(&mut node);
+
+            // calling factory function if it exists.
+            let _ = self.try_init_default();
+
+            if self.init_spin.load(Self::PTL_INIT_SPIN_ORDERING) {
+                unsafe { self.get_unchecked() }
+            } else {
+                panic!("PseudoThreadLocal::with() called but not initialized");
+            }
+
+            // guard dropping...
+        };
+
+        (callback)(val)
+    }
+}
+
+#[cfg(not(feature = "std"))]
+static COLLECTOR_ANCHOR: PseudoThreadLocal<CollectorAnchor> = PseudoThreadLocal::new(|| CollectorAnchor);
+#[cfg(not(feature = "std"))]
+static LOCAL_COLLECTOR: PseudoThreadLocal<AtomicPtr<Collector>> = PseudoThreadLocal::new(AtomicPtr::default);
+
+#[cfg(feature = "std")]
 thread_local! {
     static COLLECTOR_ANCHOR: CollectorAnchor = CollectorAnchor;
     static LOCAL_COLLECTOR: AtomicPtr<Collector> = AtomicPtr::default();

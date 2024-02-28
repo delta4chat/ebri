@@ -6,6 +6,9 @@ use core::ops::Deref;
 use core::ptr::{addr_of, NonNull};
 use core::sync::atomic::Ordering::Relaxed;
 
+extern crate alloc;
+use alloc::boxed::Box;
+
 /// [`Shared`] is a reference-counted handle to an instance.
 ///
 /// The instance is passed to the EBR garbage collector when the last strong reference is dropped.
@@ -309,5 +312,5 @@ impl<'g, T> TryFrom<Ptr<'g, T>> for Shared<T> {
 unsafe impl<T: Send> Send for Shared<T> {}
 unsafe impl<T: Sync> Sync for Shared<T> {}
 
-unwindsafe_impl!(Shared, 1);
+unwindsafe_impl!(Shared, T);
 

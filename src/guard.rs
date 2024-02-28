@@ -1,6 +1,8 @@
 use super::collectible::{Collectible, DeferredClosure};
 use super::collector::Collector;
 
+extern crate alloc;
+use alloc::boxed::Box;
 
 /// [`Guard`] allows the user to read [`AtomicShared`](super::AtomicShared) and keeps the
 /// underlying instance pinned to the thread.
@@ -129,5 +131,5 @@ impl Drop for Guard {
     }
 }
 
-crate::uwindsafe_impl!(Guard, 0);
+crate::unwindsafe_impl!(Guard);
 

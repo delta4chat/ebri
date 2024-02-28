@@ -1,3 +1,5 @@
+//! **NOTE: un-tested. use at your own risk.**
+//!
 //! # ebri (ebr-integrated)
 //! a `no-std` EBR (Epoch-Based Reclamation) implementation.
 //! thanks to the idea from [`scc::ebr`](https://docs.rs/scc/2.0.16/scc/ebr/).
@@ -6,10 +8,13 @@
 //! that of [`crossbeam_epoch`](https://docs.rs/crossbeam-epoch/), however the API set is vastly
 //! different, for instance, `unsafe` blocks are not required to read an instance subject to EBR.
 
+// #![no_std] by default (unless feature "std" enabled)
+#![cfg_attr(not(feature = "std"), no_std)]
+
 #[macro_export]
 macro_rules! unwindsafe_impl {
     // no generic types
-    ($t:tt, 0) => {{
+    ($t:tt) => {
         #[cfg(feature = "std")]
         mod _unwindsafe_impl {
             use super::$t;
@@ -17,29 +22,29 @@ macro_rules! unwindsafe_impl {
 
             impl UnwindSafe for $t {}
         }
-    }};
+    };
 
     // one generic type without lifetime (owned)
-    ($t:tt, 1) => {{
+    ($t:tt, $gt:tt) => {
         #[cfg(feature = "std")]
         mod _unwindsafe_generic_impl {
             use super::$t;
             use std::panic::UnwindSafe;
 
-            impl<T: UnwindSafe> UnwindSafe for $t<T> {}
+            impl<$gt: UnwindSafe> UnwindSafe for $t<$gt> {}
         }
-    }};
+    };
 
     // one generic type with lifetime (borrowed)
-    ($t:tt, 2) => {{
+    ($t:tt, $gt:tt, $lt:tt) => {
         #[cfg(feature = "std")]
         mod _unwindsafe_generic_lifetime_impl {
             use super::$t;
             use std::panic::UnwindSafe;
 
-            impl<'g, T: UnwindSafe> UnwindSafe for $t<'g, T> {}
+            impl<$lt, $gt: UnwindSafe> UnwindSafe for $t<$lt, $gt> {}
         }
-    }};
+    };
 }
 
 mod atomic_owned;
@@ -68,6 +73,7 @@ pub use tag::Tag;
 
 mod collector;
 mod ref_counted;
+mod exit_guard;
 
 /// Suspends the garbage collector of the current thread.
 ///

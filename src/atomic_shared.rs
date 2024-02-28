@@ -6,6 +6,9 @@ use core::ptr::{null_mut, NonNull};
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::{self, Acquire, Relaxed};
 
+extern crate alloc;
+use alloc::boxed::Box;
+
 /// [`AtomicShared`] owns the underlying instance, and allows users to perform atomic operations
 /// on the pointer to it.
 #[derive(Debug)]
@@ -453,5 +456,5 @@ impl<T> Drop for AtomicShared<T> {
 unsafe impl<T: Send> Send for AtomicShared<T> {}
 unsafe impl<T: Sync> Sync for AtomicShared<T> {}
 
-crate::unwindsafe_impl!(AtomicShared, 1);
+crate::unwindsafe_impl!(AtomicShared, T);
 

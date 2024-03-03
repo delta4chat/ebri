@@ -6,7 +6,7 @@ use core::fmt::{Debug, Formatter};
 use core::sync::atomic::{AtomicBool, Ordering::Relaxed};
 
 use crate::{AtomicOwned, Guard};
-use crate::Arc;
+
 
 /// [`DropGuard`] captures the environment and invokes the defined closure at the end of the scope.
 pub struct DropGuard<T, D: FnOnce(&mut T)> {

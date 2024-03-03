@@ -1,3 +1,6 @@
+// warn instead of deny
+#[warn(clippy::not_unsafe_ptr_arg_deref)]
+
 use core::mem::transmute;
 
 /// [`Tag`] is a four-state `Enum` that can be **embedded in a pointer** as the two least

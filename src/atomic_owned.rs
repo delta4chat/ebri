@@ -1,5 +1,5 @@
-use super::ref_counted::RefCounted;
-use super::{Guard, Owned, Ptr, Tag};
+use crate::{RefCounted, Guard, Owned, Ptr, Tag};
+use crate::{Arc, Box};
 
 use core::mem::forget;
 use core::ptr::{null_mut, NonNull};
@@ -8,14 +8,11 @@ use core::sync::atomic::{
     Ordering::{self, Relaxed},
 };
 
-extern crate alloc;
-use alloc::boxed::Box;
-
 /// [`AtomicOwned`] owns the underlying instance, and allows users to perform atomic operations
 /// on the pointer to it.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AtomicOwned<T> {
-    instance_ptr: AtomicPtr<RefCounted<T>>,
+    instance_ptr: Arc<AtomicPtr<RefCounted<T>>>,
 }
 
 /// A pair of [`Owned`] and [`Ptr`] of the same type.
@@ -41,12 +38,12 @@ impl<T: 'static> AtomicOwned<T> {
     pub fn new(t: T) -> Self {
         let boxed = Box::new(RefCounted::new_unique(t));
         Self {
-            instance_ptr: AtomicPtr::new(Box::into_raw(boxed)),
+            instance_ptr: Arc::new(AtomicPtr::new(Box::into_raw(boxed))),
         }
     }
 }
 
-impl<T> AtomicOwned<T> {
+impl<T: 'static> AtomicOwned<T> {
     /// Creates a new [`AtomicOwned`] from an [`Owned`] of `T`.
     ///
     /// # Examples
@@ -59,11 +56,11 @@ impl<T> AtomicOwned<T> {
     /// ```
     #[inline]
     #[must_use]
-    pub const fn from(owned: Owned<T>) -> Self {
+    pub fn from(owned: Owned<T>) -> Self {
         let ptr = owned.get_underlying_ptr();
         forget(owned);
         Self {
-            instance_ptr: AtomicPtr::new(ptr),
+            instance_ptr: Arc::new(AtomicPtr::new(ptr)),
         }
     }
 
@@ -78,9 +75,9 @@ impl<T> AtomicOwned<T> {
     /// ```
     #[inline]
     #[must_use]
-    pub const fn null() -> Self {
+    pub fn null() -> Self {
         Self {
-            instance_ptr: AtomicPtr::new(null_mut()),
+            instance_ptr: Arc::new(AtomicPtr::new(null_mut())),
         }
     }
 
@@ -117,6 +114,19 @@ impl<T> AtomicOwned<T> {
     #[inline]
     pub fn load<'g>(&self, order: Ordering, _guard: &'g Guard) -> Ptr<'g, T> {
         Ptr::from(self.instance_ptr.load(order))
+    }
+
+    #[inline]
+    pub fn store<'g>(&self, value: T, order: Ordering) {
+        let owned = Owned::new(value);
+        let tag =
+            if self.is_null(order) {
+                Tag::None
+            } else {
+                self.tag(order)
+            };
+
+        self.swap((Some(owned), tag), order);
     }
 
     /// Stores the given value into the [`AtomicOwned`] and returns the original value.
@@ -358,7 +368,7 @@ impl<T> AtomicOwned<T> {
     }
 }
 
-impl<T> Default for AtomicOwned<T> {
+impl<T: 'static> Default for AtomicOwned<T> {
     #[inline]
     fn default() -> Self {
         Self::null()

@@ -1,7 +1,6 @@
-use core::ptr::NonNull;
+use crate::Box;
 
-extern crate alloc;
-use alloc::boxed::Box;
+use core::ptr::NonNull;
 
 /// [`Collectible`] defines key methods for `Self` to be reclaimed by the EBR garbage collector.
 ///

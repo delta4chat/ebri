@@ -1,13 +1,11 @@
-use super::ref_counted::RefCounted;
-use super::{Guard, Ptr, Shared, Tag};
-use core::mem::forget;
+use crate::{RefCounted, Guard, Ptr, Shared, Tag};
+use crate::Box;
 
+use core::mem::forget;
 use core::ptr::{null_mut, NonNull};
 use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::{self, Acquire, Relaxed};
-
-extern crate alloc;
-use alloc::boxed::Box;
+use core::panic::UnwindSafe;
 
 /// [`AtomicShared`] owns the underlying instance, and allows users to perform atomic operations
 /// on the pointer to it.
@@ -15,6 +13,32 @@ use alloc::boxed::Box;
 pub struct AtomicShared<T> {
     instance_ptr: AtomicPtr<RefCounted<T>>,
 }
+
+impl<T> Clone for AtomicShared<T> {
+    #[inline]
+    fn clone(&self) -> AtomicShared<T> {
+        self.clone(Relaxed, &Guard::new())
+    }
+}
+impl<T> Default for AtomicShared<T> {
+    #[inline]
+    fn default() -> Self {
+        Self::null()
+    }
+}
+impl<T> Drop for AtomicShared<T> {
+    #[inline]
+    fn drop(&mut self) {
+        if let Some(ptr) = NonNull::new(Tag::unset_tag(self.instance_ptr.load(Relaxed)).cast_mut())
+        {
+            drop(Shared::from(ptr));
+        }
+    }
+}
+
+unsafe impl<T: Send> Send for AtomicShared<T> {}
+unsafe impl<T: Sync> Sync for AtomicShared<T> {}
+impl<T: UnwindSafe> UnwindSafe for AtomicShared<T> {}
 
 /// A pair of [`Shared`] and [`Ptr`] of the same type.
 pub type SharedPtrPair<'g, T> = (Option<Shared<T>>, Ptr<'g, T>);
@@ -428,34 +452,4 @@ impl<T> AtomicShared<T> {
         None
     }
 }
-
-impl<T> Clone for AtomicShared<T> {
-    #[inline]
-    fn clone(&self) -> AtomicShared<T> {
-        self.clone(Relaxed, &Guard::new())
-    }
-}
-
-impl<T> Default for AtomicShared<T> {
-    #[inline]
-    fn default() -> Self {
-        Self::null()
-    }
-}
-
-impl<T> Drop for AtomicShared<T> {
-    #[inline]
-    fn drop(&mut self) {
-        if let Some(ptr) = NonNull::new(Tag::unset_tag(self.instance_ptr.load(Relaxed)).cast_mut())
-        {
-            drop(Shared::from(ptr));
-        }
-    }
-}
-
-unsafe impl<T: Send> Send for AtomicShared<T> {}
-unsafe impl<T: Sync> Sync for AtomicShared<T> {}
-
-use core::panic::UnwindSafe;
-impl<T: UnwindSafe> UnwindSafe for AtomicShared<T> {}
 

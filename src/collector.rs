@@ -1,13 +1,11 @@
-use super::{Collectible, Guard, Tag};
-use crate::exit_guard::ExitGuard;
+use crate::{Collectible, Guard, Tag, ExitGuard};
+
+use crate::Arc;
+use crate::Box;
 
 use core::ptr::{self, NonNull};
 use core::sync::atomic::Ordering::{self, Acquire, Relaxed, Release, SeqCst};
 use core::sync::atomic::{fence, AtomicPtr, AtomicBool, AtomicU8, AtomicUsize};
-
-extern crate alloc;
-use alloc::sync::Arc;
-use alloc::boxed::Box;
 
 /// [`Collector`] is a garbage collector that reclaims thread-locally unreachable instances
 /// when they are globally unreachable.
@@ -169,7 +167,7 @@ impl Collector {
             let mut guard = ExitGuard::new(garbage_link, |mut garbage_link| {
                 while let Some(mut instance_ptr) = garbage_link.take() {
                     // Something went wrong during dropping and deallocating an instance.
-                    garbage_link = unsafe { *instance_ptr.as_mut().next_ptr_mut() };
+                    garbage_link = unsafe { instance_ptr.as_mut().next_ptr_mut() };
 
                     // Previous `drop_and_dealloc` may have accessed `self.current_instance_link`.
                     core::sync::atomic::compiler_fence(Acquire);

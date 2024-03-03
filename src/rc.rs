@@ -1,4 +1,7 @@
-use super::Collectible;
+use crate::Collectible;
+use crate::Arc;
+
+use core::fmt::Debug;
 use core::mem::ManuallyDrop;
 use core::ops::Deref;
 use core::ptr::NonNull;
@@ -7,18 +10,54 @@ use core::sync::atomic::Ordering::{self, Relaxed};
 
 /// [`RefCounted`] stores an instance of type `T`, and a union of a link to the next
 /// [`Collectible`] or the reference counter.
-pub struct RefCounted<T> {
+pub struct _RefCounted<T> {
     instance: T,
     next_or_refcnt: LinkOrRefCnt,
 }
 
-impl<T> RefCounted<T> {
+/// replace by Arc
+pub struct RefCounted<T> {
+    instance:       Arc<T>,
+    next_or_refcnt: Result<Arc<Self>, Arc<AtomicUsize>>,
+}
+impl<T: Debug> Debug for RefCounted<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter)
+        -> Result<(), core::fmt::Error>
+    {
+        f.debug_struct("RefCounted")
+        .field("instance", &self.instance)
+        .field("refcnt", &self.ref_cnt())
+        .finish()
+    }
+}
+impl<T> Deref for RefCounted<T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.instance.as_ref()
+    }
+}
+
+impl<T> Clone for RefCounted<T> {
+    fn clone(&self) -> Self {
+        let instance       = self.instance.clone();
+        let next_or_refcnt = self.next_or_refcnt.clone();
+
+        let cloned = Self { instance, next_or_refcnt };
+        cloned.add_ref(); // FIXME is this should exists?
+
+        cloned
+    }
+}
+
+impl<T: Collectible> RefCounted<T> {
     /// Creates a new [`RefCounted`] that allows ownership sharing.
     #[inline]
-    pub(crate) const fn new_shared(t: T) -> Self {
+    pub const fn new_shared(t: T) -> Self {
         Self {
-            instance: t,
-            next_or_refcnt: LinkOrRefCnt::new_shared(),
+            instance:       Arc::new(t),
+            next_or_refcnt: Err(Arc::new(AtomicUsize::new(1))),
         }
     }
 
@@ -26,10 +65,10 @@ impl<T> RefCounted<T> {
     ///
     /// The reference counter field is never used until the instance is retired.
     #[inline]
-    pub(crate) const fn new_unique(t: T) -> Self {
+    pub const fn new_unique(t: T) -> Self {
         Self {
-            instance: t,
-            next_or_refcnt: LinkOrRefCnt::new_unique(),
+            instance:       Arc::new(t),
+            next_or_refcnt: Err(Arc::new(AtomicUsize::new(0))),
         }
     }
 
@@ -67,7 +106,7 @@ impl<T> RefCounted<T> {
     /// Returns a mutable reference to the instance if it is uniquely owned.
     #[inline]
     pub fn get_mut_unique(&mut self) -> &mut T {
-        debug_assert_eq!(self.ref_cnt().load(Relaxed), 0);
+        assert_eq!(self.ref_cnt().load(Relaxed), 0);
         &mut self.instance
     }
 
@@ -80,7 +119,7 @@ impl<T> RefCounted<T> {
             debug_assert!(current <= usize::MAX - 2, "reference count overflow");
             match self
                 .ref_cnt()
-                .compare_exchange_weak(current, current + 2, Relaxed, Relaxed)
+                .compare_exchange(current, current + 2, Relaxed, Relaxed)
             {
                 Ok(_) => break,
                 Err(actual) => {
@@ -103,7 +142,7 @@ impl<T> RefCounted<T> {
             let new = if current <= 1 { 0 } else { current - 2 };
             match self
                 .ref_cnt()
-                .compare_exchange_weak(current, new, Relaxed, Relaxed)
+                .compare_exchange(current, new, Relaxed, Relaxed)
             {
                 Ok(_) => break,
                 Err(actual) => {
@@ -116,8 +155,16 @@ impl<T> RefCounted<T> {
 
     /// Returns a reference to its reference count.
     #[inline]
-    pub fn ref_cnt(&self) -> &AtomicUsize {
-        unsafe { &self.next_or_refcnt.refcnt.0 }
+    pub fn ref_cnt(&self) -> Arc<AtomicUsize> {
+        let mut cur: &Self = &self;
+        while let Ok(ref next) = cur.next_or_refcnt {
+            cur = next.as_ref();
+        }
+        if let Err(ref cnt) = cur.next_or_refcnt {
+            cnt.clone()
+        } else {
+            panic!("unexpected Ok val in linked list `RefCounted`");
+        }
     }
 
     /// Returns a `dyn Collectible` reference to `self`.
@@ -126,25 +173,16 @@ impl<T> RefCounted<T> {
         self
     }
 }
-
-impl<T> Deref for RefCounted<T> {
-    type Target = T;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.instance
-    }
-}
-
-impl<T> Collectible for RefCounted<T> {
+impl<T: Collectible> Collectible for RefCounted<T> {
     #[inline]
     fn next_ptr_mut(&mut self) -> &mut Option<NonNull<dyn Collectible>> {
-        unsafe { &mut self.next_or_refcnt.next }
+        let inst = Arc::get_mut(&mut self.instance)?;
+        &mut NonNull::new(inst as *mut _)
     }
 }
 
 /// [`LinkOrRefCnt`] is a union of a dynamic pointer to [`Collectible`] and a reference count.
-pub union LinkOrRefCnt {
+pub(crate) union LinkOrRefCnt {
     next: Option<NonNull<dyn Collectible>>,
     refcnt: ManuallyDrop<(AtomicUsize, usize)>,
 }

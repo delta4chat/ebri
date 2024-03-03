@@ -1,13 +1,10 @@
-use super::ref_counted::RefCounted;
-use super::{Collectible, Guard, Ptr};
+use crate::{RefCounted, Collectible, Guard, Ptr};
+use crate::Box;
 
 use core::mem::{forget, transmute};
 use core::ops::Deref;
 use core::sync::atomic::Ordering::Relaxed;
 use core::ptr::{addr_of, NonNull};
-
-extern crate alloc;
-use alloc::boxed::Box;
 
 /// [`Owned`] uniquely owns an instance.
 ///

@@ -1,4 +1,4 @@
-//! **NOTE: un-tested. use at your own risk.**
+//! ### **NOTE: un-tested. use at your own risk.**
 //!
 //! # ebri (ebr-integrated)
 //! a `no-std` EBR (Epoch-Based Reclamation) implementation.
@@ -11,33 +11,49 @@
 // #![no_std] by default (unless feature "std" enabled)
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod atomic_owned;
-pub use atomic_owned::AtomicOwned;
+pub mod atomic_owned;
+pub use atomic_owned::*;
 
-mod atomic_shared;
-pub use atomic_shared::AtomicShared;
+pub mod atomic_shared;
+pub use atomic_shared::*;
 
-mod guard;
-pub use guard::Guard;
+pub mod guard;
+pub use guard::*;
 
-mod collectible;
-pub use collectible::Collectible;
+pub mod collectible;
+pub use collectible::*;
 
-mod owned;
-pub use owned::Owned;
+pub mod owned;
+pub use owned::*;
 
-mod ptr;
-pub use ptr::Ptr;
+pub mod ptr;
+pub use ptr::*;
 
-mod shared;
-pub use shared::Shared;
+pub mod shared;
+pub use shared::*;
 
-mod tag;
-pub use tag::Tag;
+pub mod tag;
+pub use tag::*;
 
 pub mod collector;
+
 pub mod ref_counted;
-pub mod exit_guard;
+pub use ref_counted::*;
+
+pub mod dropguard;
+pub use dropguard::*;
+pub use dropguard as drop_guard;
+pub use dropguard as exit_guard;
+pub use dropguard as defer;
+pub use dropguard as defer_guard;
+pub use dropguard as destruct_guard;
+
+// importing some alloc types now
+extern crate alloc;
+pub(crate) use alloc::{
+    sync::Arc,
+    boxed::Box,
+};
 
 /// Suspends the garbage collector of the current thread.
 ///

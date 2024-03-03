@@ -219,7 +219,7 @@ impl<'g, T> Ptr<'g, T> {
 
     /// Creates a new [`Ptr`] from a raw pointer.
     #[inline]
-    pub(super) const fn from(ptr: *const RefCounted<T>) -> Self {
+    pub const fn from(ptr: *const RefCounted<T>) -> Self {
         Self {
             instance_ptr: ptr,
             _phantom: PhantomData,
@@ -228,7 +228,7 @@ impl<'g, T> Ptr<'g, T> {
 
     /// Provides a raw pointer to its [`RefCounted`].
     #[inline]
-    pub(super) const fn as_underlying_ptr(self) -> *const RefCounted<T> {
+    pub const fn as_underlying_ptr(self) -> *const RefCounted<T> {
         self.instance_ptr
     }
 }

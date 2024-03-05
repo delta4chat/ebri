@@ -2,8 +2,8 @@ use super::Collectible;
 use core::mem::ManuallyDrop;
 use core::ops::Deref;
 use core::ptr::NonNull;
-use core::sync::atomic::AtomicUsize;
-use core::sync::atomic::Ordering::{self, Relaxed};
+use portable_atomic::AtomicUsize;
+use portable_atomic::Ordering::{self, Relaxed};
 
 /// [`RefCounted`] stores an instance of type `T`, and a union of a link to the next
 /// [`Collectible`] or the reference counter.

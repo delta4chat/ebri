@@ -3,7 +3,7 @@ use crate::Box;
 
 use core::mem::{forget, transmute};
 use core::ops::Deref;
-use core::sync::atomic::Ordering::Relaxed;
+use portable_atomic::Ordering::Relaxed;
 use core::ptr::{addr_of, NonNull};
 
 /// [`Owned`] uniquely owns an instance.
@@ -131,8 +131,8 @@ impl<T> Owned<T> {
     ///
     /// ```
     /// use ebri::Owned;
-    /// use core::sync::atomic::AtomicBool;
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::AtomicBool;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// let owned: Owned<usize> = Owned::new(10);
     ///
@@ -171,8 +171,8 @@ impl<T> Owned<T> {
     ///
     /// ```
     /// use ebri::Owned;
-    /// use core::sync::atomic::AtomicBool;
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::AtomicBool;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// static DROPPED: AtomicBool = AtomicBool::new(false);
     /// struct T(&'static AtomicBool);

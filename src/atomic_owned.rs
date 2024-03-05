@@ -3,7 +3,7 @@ use crate::{Arc, Box};
 
 use core::mem::forget;
 use core::ptr::{null_mut, NonNull};
-use core::sync::atomic::{
+use portable_atomic::{
     AtomicPtr,
     Ordering::{self, Relaxed},
 };
@@ -87,7 +87,7 @@ impl<T: 'static> AtomicOwned<T> {
     ///
     /// ```
     /// use ebri::{AtomicOwned, Tag};
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// let atomic_owned: AtomicOwned<usize> = AtomicOwned::null();
     /// atomic_owned.update_tag_if(Tag::Both, |p| p.tag() == Tag::None, Relaxed, Relaxed);
@@ -104,7 +104,7 @@ impl<T: 'static> AtomicOwned<T> {
     ///
     /// ```
     /// use ebri::{AtomicOwned, Guard};
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// let atomic_owned: AtomicOwned<usize> = AtomicOwned::new(11);
     /// let guard = Guard::new();
@@ -135,7 +135,7 @@ impl<T: 'static> AtomicOwned<T> {
     ///
     /// ```
     /// use ebri::{AtomicOwned, Guard, Owned, Tag};
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// let atomic_owned: AtomicOwned<usize> = AtomicOwned::new(14);
     /// let guard = Guard::new();
@@ -171,7 +171,7 @@ impl<T: 'static> AtomicOwned<T> {
     ///
     /// ```
     /// use ebri::{AtomicOwned, Tag};
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// let atomic_owned: AtomicOwned<usize> = AtomicOwned::null();
     /// assert_eq!(atomic_owned.tag(Relaxed), Tag::None);
@@ -189,7 +189,7 @@ impl<T: 'static> AtomicOwned<T> {
     ///
     /// ```
     /// use ebri::{AtomicOwned, Tag};
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// let atomic_owned: AtomicOwned<usize> = AtomicOwned::null();
     /// assert!(atomic_owned.update_tag_if(Tag::Both, |p| p.tag() == Tag::None, Relaxed, Relaxed));
@@ -226,7 +226,7 @@ impl<T: 'static> AtomicOwned<T> {
     ///
     /// ```
     /// use ebri::{AtomicOwned, Guard, Owned, Tag};
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// let atomic_owned: AtomicOwned<usize> = AtomicOwned::new(17);
     /// let guard = Guard::new();
@@ -293,7 +293,7 @@ impl<T: 'static> AtomicOwned<T> {
     ///
     /// ```
     /// use ebri::{AtomicOwned, Owned, Guard, Tag};
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// let atomic_owned: AtomicOwned<usize> = AtomicOwned::new(17);
     /// let guard = Guard::new();
@@ -352,7 +352,7 @@ impl<T: 'static> AtomicOwned<T> {
     ///
     /// ```
     /// use ebri::{AtomicOwned, Owned};
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// let atomic_owned: AtomicOwned<usize> = AtomicOwned::new(55);
     /// let owned: Owned<usize> = atomic_owned.into_owned(Relaxed).unwrap();

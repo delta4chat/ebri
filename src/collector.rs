@@ -4,8 +4,8 @@ use crate::Arc;
 use crate::Box;
 
 use core::ptr::{self, NonNull};
-use core::sync::atomic::Ordering::{self, Acquire, Relaxed, Release, SeqCst};
-use core::sync::atomic::{fence, AtomicPtr, AtomicBool, AtomicU8, AtomicUsize};
+use portable_atomic::Ordering::{self, Acquire, Relaxed, Release, SeqCst};
+use portable_atomic::{fence, AtomicPtr, AtomicBool, AtomicU8, AtomicUsize};
 
 /// [`Collector`] is a garbage collector that reclaims thread-locally unreachable instances
 /// when they are globally unreachable.
@@ -170,13 +170,13 @@ impl Collector {
                     garbage_link = unsafe { instance_ptr.as_mut().next_ptr_mut() };
 
                     // Previous `drop_and_dealloc` may have accessed `self.current_instance_link`.
-                    core::sync::atomic::compiler_fence(Acquire);
+                    portable_atomic::compiler_fence(Acquire);
                     self.reclaim(instance_ptr.as_ptr());
                 }
             });
 
             // `drop_and_dealloc` may access `self.current_instance_link`.
-            core::sync::atomic::compiler_fence(Acquire);
+            portable_atomic::compiler_fence(Acquire);
             unsafe {
                 instance_ptr.as_mut().drop_and_dealloc();
             }

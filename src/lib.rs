@@ -8,8 +8,11 @@
 //! that of [`crossbeam_epoch`](https://docs.rs/crossbeam-epoch/), however the API set is vastly
 //! different, for instance, `unsafe` blocks are not required to read an instance subject to EBR.
 
-// #![no_std] by default (unless feature "std" enabled)
-#![cfg_attr(not(feature = "std"), no_std)]
+// #![no_std] by default (unless testing or feature "std" enabled)
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
+
+pub mod atomic_object;
+pub use atomic_object::*;
 
 pub mod atomic_owned;
 pub use atomic_owned::*;
@@ -48,7 +51,7 @@ pub use dropguard as defer;
 pub use dropguard as defer_guard;
 pub use dropguard as destruct_guard;
 
-// importing some alloc types now
+// importing some alloc types
 extern crate alloc;
 pub(crate) use alloc::{
     sync::Arc,

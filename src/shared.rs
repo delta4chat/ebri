@@ -4,7 +4,7 @@ use super::{Collectible, Guard, Ptr};
 use core::mem::{forget, transmute};
 use core::ops::Deref;
 use core::ptr::{addr_of, NonNull};
-use core::sync::atomic::Ordering::Relaxed;
+use portable_atomic::Ordering::Relaxed;
 
 extern crate alloc;
 use alloc::boxed::Box;
@@ -140,8 +140,8 @@ impl<T> Shared<T> {
     ///
     /// ```
     /// use ebri::Shared;
-    /// use core::sync::atomic::AtomicBool;
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::AtomicBool;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// let shared: Shared<usize> = Shared::new(10);
     /// let shared_clone: Shared<usize> = shared.clone();
@@ -195,8 +195,8 @@ impl<T> Shared<T> {
     ///
     /// ```
     /// use ebri::Shared;
-    /// use core::sync::atomic::AtomicBool;
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::AtomicBool;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// static DROPPED: AtomicBool = AtomicBool::new(false);
     /// struct T(&'static AtomicBool);

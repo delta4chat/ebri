@@ -3,7 +3,7 @@
 
 use core::ops::{Deref, DerefMut};
 use core::fmt::{Debug, Formatter};
-use core::sync::atomic::{AtomicBool, Ordering::Relaxed};
+use portable_atomic::{AtomicBool, Ordering::Relaxed};
 
 use crate::{AtomicOwned, Guard};
 

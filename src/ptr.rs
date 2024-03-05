@@ -3,7 +3,7 @@ use super::{Shared, Tag};
 
 use core::marker::PhantomData;
 use core::ptr::{self, addr_of, NonNull};
-use core::sync::atomic::Ordering::Relaxed;
+use portable_atomic::Ordering::Relaxed;
 use core::ops::Deref;
 
 /// [`Ptr`] points to an instance.
@@ -54,7 +54,7 @@ impl<'g, T> Ptr<'g, T> {
     ///
     /// ```
     /// use ebri::{AtomicShared, Guard};
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// let atomic_shared: AtomicShared<usize> = AtomicShared::new(21);
     /// let guard = Guard::new();
@@ -73,7 +73,7 @@ impl<'g, T> Ptr<'g, T> {
     ///
     /// ```
     /// use ebri::{Guard, Shared};
-    /// use core::sync::atomic::Ordering::Relaxed;
+    /// use portable_atomic::Ordering::Relaxed;
     ///
     /// let shared: Shared<usize> = Shared::new(29);
     /// let guard = Guard::new();

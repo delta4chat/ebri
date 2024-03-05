@@ -123,11 +123,11 @@ impl Collector {
     /// Returns the [`Collector`] attached to the current thread.
     #[inline]
     pub(super) fn current() -> *mut Collector {
-        LOCAL_COLLECTOR.with(|local_collector| {
-            let mut collector_ptr = local_collector.load(Relaxed);
+        GLOBAL_COLLECTOR.with(|global_collector| {
+            let mut collector_ptr = global_collector.load(Relaxed);
             if collector_ptr.is_null() {
                 collector_ptr = COLLECTOR_ANCHOR.with(|anchor| { CollectorAnchor::alloc(&anchor) });
-                local_collector.store(collector_ptr, Relaxed);
+                global_collector.store(collector_ptr, Relaxed);
             }
             collector_ptr as *mut _
         })
@@ -136,15 +136,15 @@ impl Collector {
     /// Passes its garbage instances to other threads.
     #[inline]
     pub(super) fn pass_garbage() -> bool {
-        LOCAL_COLLECTOR.with(|local_collector| {
-            let collector_ptr = local_collector.load(Relaxed);
+        GLOBAL_COLLECTOR.with(|global_collector| {
+            let collector_ptr = global_collector.load(Relaxed);
             if let Some(collector) = unsafe { collector_ptr.as_mut() } {
                 if collector.num_readers != 0 {
                     return false;
                 }
                 if collector.has_garbage {
                     collector.state.fetch_or(Collector::INVALID, Release);
-                    local_collector.store(ptr::null_mut(), Relaxed);
+                    global_collector.store(ptr::null_mut(), Relaxed);
                     mark_scan_enforced();
                 }
             }
@@ -345,7 +345,7 @@ impl CollectorAnchor {
 impl Drop for CollectorAnchor {
     #[inline]
     fn drop(&mut self) {
-        try_drop_local_collector();
+        try_drop_global_collector();
     }
 }
 
@@ -362,8 +362,8 @@ fn mark_scan_enforced() {
     });
 }
 
-fn try_drop_local_collector() {
-    let collector_ptr = LOCAL_COLLECTOR.with(|local_collector| local_collector.load(Relaxed));
+fn try_drop_global_collector() {
+    let collector_ptr = GLOBAL_COLLECTOR.with(|global_collector| global_collector.load(Relaxed));
     if let Some(collector) = unsafe { collector_ptr.as_mut() } {
         if collector.next_link.is_null() {
             let anchor_ptr = GLOBAL_ANCHOR.load(Relaxed);
@@ -390,6 +390,8 @@ fn try_drop_local_collector() {
 use core::mem::MaybeUninit;
 use mcslock::raw::spins;
 
+// because it should avoid "create for each calling with()" (unwanted-behavior),
+// so if you need to maintain "ThreadLocal" in #![no_std], you should just make it Global.
 struct PseudoThreadLocal<T> {
     id:        AtomicUsize,
 
@@ -552,6 +554,12 @@ impl<T> PseudoThreadLocal<T> {
     where
         CB: FnOnce(Arc<T>) -> RET,
     {
+        // if the inner value already initialized,
+        // this will avoid doing unnecessary mcs spining-lock.
+        if self.init_spin.load(Self::PTL_INIT_SPIN_ORDERING) {
+            return (callback)(unsafe { self.get_unchecked() });
+        }
+
         let val = {
             let mut node = spins::MutexNode::new();
             let _guard = self.accs_spin.lock(&mut node);
@@ -572,16 +580,8 @@ impl<T> PseudoThreadLocal<T> {
     }
 }
 
-#[cfg(not(feature = "std"))]
 static COLLECTOR_ANCHOR: PseudoThreadLocal<CollectorAnchor> = PseudoThreadLocal::new(|| CollectorAnchor);
-#[cfg(not(feature = "std"))]
-static LOCAL_COLLECTOR: PseudoThreadLocal<AtomicPtr<Collector>> = PseudoThreadLocal::new(AtomicPtr::default);
-
-#[cfg(feature = "std")]
-thread_local! {
-    static COLLECTOR_ANCHOR: CollectorAnchor = CollectorAnchor;
-    static LOCAL_COLLECTOR: AtomicPtr<Collector> = AtomicPtr::default();
-}
+static GLOBAL_COLLECTOR: PseudoThreadLocal<AtomicPtr<Collector>> = PseudoThreadLocal::new(AtomicPtr::default);
 
 /// The global epoch.
 ///

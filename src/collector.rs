@@ -450,13 +450,12 @@ impl<T> PseudoThreadLocal<T> {
                     anyhow::bail!("[E1] Self::genid overflow in Self::init()! (iteration={i})");
                 }
 
-                if let Err(_) =
-                    self.init_spin.compare_exchange(
+                if self.init_spin.compare_exchange(
                         false, // if prev value == false:
                         true,  // then: set it   = true
                         Self::PTL_INIT_SPIN_ORDERING,
                         Self::PTL_INIT_SPIN_ORDERING,
-                    )
+                    ).is_err()
                 {
                     log::warn!("[E3] PseudoThreadLocal: compare-exchange failed in Self::init() (iteration={i})");
                     continue;

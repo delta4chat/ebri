@@ -65,7 +65,7 @@ where
     pub fn new(captured: T, cb: D) -> Self {
         Self {
             val_dropcb: Some((captured, cb)),
-            should_run: AtomicOwned::new(RunAlways),
+            should_run: AtomicOwned::new(RUN),
         }
     }
 
@@ -81,16 +81,16 @@ where
     }
 
     pub fn always(&self) {
-        self.set_should_run(RunAlways)
+        self.set_should_run(RUN)
     }
     pub fn on_success(&self) {
-        self.set_should_run(RunIfSuccess)
+        self.set_should_run(RUN_IF_SUCCESS)
     }
     pub fn on_failed(&self) {
-        self.set_should_run(RunIfFailed)
+        self.set_should_run(RUN_IF_FAILED)
     }
     pub fn on_unwind(&self) {
-        self.set_should_run(RunIfUnwind)
+        self.set_should_run(RUN_IF_UNWIND)
     }
 
     /// drop then return inner.
@@ -129,10 +129,10 @@ macro_rules! defer {
     };
 }
 
-pub const RunAlways:    ShouldRun = ShouldRun::Always;
-pub const RunIfSuccess: ShouldRun = ShouldRun::OnSuccess;
-pub const RunIfFailed:  ShouldRun = ShouldRun::OnFailed;
-pub const RunIfUnwind:  ShouldRun = ShouldRun::OnUnwind;
+pub const RUN:            ShouldRun = ShouldRun::Always;
+pub const RUN_IF_SUCCESS: ShouldRun = ShouldRun::OnSuccess;
+pub const RUN_IF_FAILED:  ShouldRun = ShouldRun::OnFailed;
+pub const RUN_IF_UNWIND:  ShouldRun = ShouldRun::OnUnwind;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ShouldRun {
@@ -191,11 +191,7 @@ impl ShouldRun {
             if Self::hint_manually(None) {
                 log::error!("be carefully to using [ShouldRun::Manually] because it often causes mistake or bugs. if you are make sure to use this, call ShouldRun::slient_manually() before destructing, or enable feature 'dropguard_manually'.");
             }
-            if case == Self::BY_MANUALLY {
-                return true;
-            } else {
-                return false;
-            }
+            return case == Self::BY_MANUALLY
         }
 
         #[cfg(feature = "std")]

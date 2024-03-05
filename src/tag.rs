@@ -1,5 +1,8 @@
 // warn instead of deny
-#[warn(clippy::not_unsafe_ptr_arg_deref)]
+#![warn(clippy::not_unsafe_ptr_arg_deref)]
+
+// https://github.com/rust-lang/rust-clippy/issues/12402
+#![allow(clippy::transmutes_expressible_as_ptr_casts)]
 
 use core::mem::transmute;
 

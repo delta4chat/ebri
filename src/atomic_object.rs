@@ -33,7 +33,7 @@ impl<T> AtomicObject<T> {
     }
 
     pub fn get_shared(&self, guard: &Guard) -> Shared<Arc<T>> {
-        self.inner.get_shared(Ordering::Relaxed, &guard)
+        self.inner.get_shared(Ordering::Relaxed, guard)
                     .expect("Bug: `.inner` should never be NULL!")
     }
 

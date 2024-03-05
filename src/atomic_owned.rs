@@ -1,3 +1,5 @@
+#![allow(clippy::extra_unused_lifetimes)]
+
 use crate::{RefCounted, Guard, Owned, Ptr, Tag};
 use crate::{Arc, Box};
 
